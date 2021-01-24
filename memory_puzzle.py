@@ -128,11 +128,22 @@ class Drawable:
         shape, color = tile.shape, tile.color
         Drawable.draw_icon(surf, shape, color, indexes)
 
+    @staticmethod
+    def draw_closed_tiles(surf, tile, indexes):
+        left, top = Core.get_title_coords_on_display(indexes.x, indexes.y)
+        pygame.draw.rect(
+            surf,
+            settings.BOX_COLOR,
+            (left, top, settings.BOX_SIZE, settings.BOX_SIZE),
+        )
+
 
 class Animation:
     @staticmethod
     def start_game(surf, board):
         Animation.reveal_tiles(surf, board, tiles=None)
+        pygame.display.update()
+        pygame.time.wait(10000)
         Animation.hide_tiles(surf, board, tiles=None)
 
     @staticmethod
@@ -149,7 +160,7 @@ class Animation:
         if tiles is None:
             for y, row in enumerate(board):
                 for x, tile in enumerate(row):
-                    Drawable.draw_open_tiles(surf, tile, Indexes(x, y))
+                    Drawable.draw_closed_tiles(surf, tile, Indexes(x, y))
         else:
             pass
 
