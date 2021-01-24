@@ -1,8 +1,12 @@
 import pygame, sys
 from dataclasses import dataclass
+from collections import namedtuple
 import memory_puzzle_settings as settings
 
 from random import shuffle
+
+Indexes = namedtuple("Indexes", ["x", "y"])
+Coords = namedtuple("Coords", ["x", "y"])
 
 
 @dataclass
@@ -50,7 +54,6 @@ class Drawable:
         for x_axes in range(settings.BOARD_WIDTH):
             for y_axes in range(settings.BOARD_HEIGHT):
                 left, top = Core.get_title_coords_on_display(x_axes, y_axes)
-                print(left, top)
                 if board[y_axes][x_axes].revealed:
                     shape, color = (
                         board[y_axes][x_axes].shape,
@@ -68,12 +71,12 @@ class Drawable:
     def draw_icon(surf, shape, color, coords):
         quarter = int(settings.BOX_SIZE * 0.25)
         half = int(settings.BOX_SIZE * 0.5)
-        left, top = Core.get_title_coords_on_display(coords[0], coords[1])
+        left, top = Core.get_title_coords_on_display(coords.x, coords.y)
 
         if shape == settings.DONUT:
             pygame.draw.circle(surf, color, (left + half, top + half), half - 5)
             pygame.draw.circle(
-                surf, settings.BGCOLOR, (left + half, top + half), quarter - 5
+                surf, settings.BG_COLOR, (left + half, top + half), quarter - 5
             )
 
         elif shape == settings.SQUARE:
@@ -94,14 +97,14 @@ class Drawable:
                 color,
                 (
                     (left + half, top),
-                    (left + settings.BOXSIZE - 1, top + half),
-                    (left + half, top + settings.BOXSIZE - 1),
+                    (left + settings.BOX_SIZE - 1, top + half),
+                    (left + half, top + settings.BOX_SIZE - 1),
                     (left, top + half),
                 ),
             )
 
         elif settings.LINES:
-            for i in range(0, settings.BOX_SIZEIZE, 4):
+            for i in range(0, settings.BOX_SIZE, 4):
                 pygame.draw.line(surf, color, (left, top + i), (left + i, top))
                 pygame.draw.line(
                     surf,
@@ -115,64 +118,74 @@ class Drawable:
             )
 
     @staticmethod
-    def draw_tile_covers(surf, tiles):
-        for tile in tiles:
-            left, top = Core.get_title_coords_on_display()
-            pygame.draw.rect(
-                surf,
-                settings.BG_COLOR,
-                (left, top, settings.BOX_SIZE, settings.BOX_SIZE),
-            )
-            shape, color = tile.shape, tile.color
-            Drawable.draw_icon(surf, shape, color, (left, top))
+    def draw_open_tiles(surf, tile, indexes):
+        left, top = Core.get_title_coords_on_display(indexes.x, indexes.y)
+        pygame.draw.rect(
+            surf,
+            settings.BOARD_COLOR,
+            (left, top, settings.BOX_SIZE, settings.BOX_SIZE),
+        )
+        shape, color = tile.shape, tile.color
+        Drawable.draw_icon(surf, shape, color, indexes)
 
 
 class Animation:
     @staticmethod
     def start_game(surf, board):
-        tiles = [
-            (x, y)
-            for x in range(settings.BOARD_WIDTH)
-            for y in range(settings.BOARD_HEIGHT)
-        ]
-        shuffle(tiles)
-        grouped_tiles = Core.split_into_group(8, tiles)
-        Drawable.draw_board(surf, board)
-        for group in grouped_tiles:
-            Animation.reveal_tiles(surf, board, group)
-            Animation.hide_tiles(surf, board, group)
+        Animation.reveal_tiles(surf, board, tiles=None)
+        Animation.hide_tiles(surf, board, tiles=None)
 
     @staticmethod
-    def reveal_tiles(surf, board, tiles):
-        for coverage in range(
-            settings.BOX_SIZE, (-settings.REVEAL_SPEED) - 1, -settings.REVEAL_SPEED
-        ):
-            Drawable.draw_tile_covers(surf, tiles, coverage)
+    def reveal_tiles(surf, board, tiles=None):
+        if tiles is None:
+            for y, row in enumerate(board):
+                for x, tile in enumerate(row):
+                    Drawable.draw_open_tiles(surf, tile, Indexes(x, y))
+        else:
+            pass
 
     @staticmethod
-    def hide_tiles(board, group):
-        pass
+    def hide_tiles(surf, board, tiles=None):
+        if tiles is None:
+            for y, row in enumerate(board):
+                for x, tile in enumerate(row):
+                    Drawable.draw_open_tiles(surf, tile, Indexes(x, y))
+        else:
+            pass
 
 
 class Main:
     @staticmethod
     def run():
         pygame.init()
+        pygame.display.set_caption(settings.TITLE)
 
-        clock = pygame.time.Clock()
         window = pygame.display.set_mode(settings.RESOLUTION)
         window.fill(settings.BG_COLOR)
 
-        mouse_x, mouse_y = 0, 0
-        pygame.display.set_caption(settings.TITLE)
+        clock = pygame.time.Clock()
+
+        # draw board bg to separate tiles from background
+        pygame.draw.rect(
+            window,
+            settings.BOARD_COLOR,
+            (
+                settings.X_MARGIN - 20,
+                settings.Y_MARGIN - 20,
+                settings.BOARD_WIDTH * (settings.BOX_SIZE + settings.GAP_SIZE) + 30,
+                settings.BOARD_HEIGHT * (settings.BOX_SIZE + settings.GAP_SIZE) + 30,
+            ),
+        )
 
         board = Core.create_new_board()
         Drawable.draw_board(window, board)
 
-        first_selection = None
+        first_tile = None
 
-        # Animation.start_game(DISPLAY_SURF, board)
-        pygame.display.flip()
+        Animation.start_game(window, board)
+
+        mouse_x, mouse_y = 0, 0
+
         pygame.display.update()
         clock.tick(settings.FPS)
 
