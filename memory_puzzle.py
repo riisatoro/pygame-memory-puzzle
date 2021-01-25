@@ -1,4 +1,5 @@
 import pygame, sys
+from pygame.locals import *
 from dataclasses import dataclass
 from collections import namedtuple
 import memory_puzzle_settings as settings
@@ -14,6 +15,9 @@ class Tile:
     shape: str
     color: tuple
     revealed: bool = False
+
+    def __eq__(self, other):
+        return self.shape == other.shape and self.color == other.color
 
 
 class Core:
@@ -59,7 +63,7 @@ class Drawable:
                         board[y_axes][x_axes].shape,
                         board[y_axes][x_axes].color,
                     )
-                    Drawable.draw_icon(surf, shape, color, (x_axes, y_axes))
+                    Drawable.draw_icon(surf, shape, color, Coords(x_axes, y_axes))
                 else:
                     pygame.draw.rect(
                         surf,
@@ -196,13 +200,51 @@ class Main:
         Animation.start_game(window, board)
 
         mouse_x, mouse_y = 0, 0
+        mouse_clicked = False
+        run = True
+        while run:
+            for event in pygame.event.get():
+                if event.type == QUIT or (
+                    event.type == KEYUP and event.key == K_ESCAPE
+                ):
+                    run = False
+                elif event.type == MOUSEBUTTONUP:
+                    mouse_x, mouse_y = event.pos
+                    mouse_clicked = True
 
-        pygame.display.update()
-        clock.tick(settings.FPS)
+            if mouse_clicked:
+                indexes = Indexes(
+                    mouse_x // (settings.BOX_SIZE + settings.GAP_SIZE) - 1,
+                    mouse_y // (settings.BOX_SIZE + settings.GAP_SIZE) - 1,
+                )
+                if indexes.x not in range(settings.BOARD_WIDTH) or indexes.y not in range(settings.BOARD_HEIGHT):
+                    mouse_clicked = False
+                    continue
 
-        import ipdb
+                if first_tile is None:
+                    first_tile = indexes
+                    Drawable.draw_open_tiles(
+                        window, board[indexes.y][indexes.x], indexes
+                    )
+                else:
+                    if first_tile == indexes:
+                        mouse_clicked = False
+                        continue
 
-        ipdb.set_trace()
+                    Drawable.draw_open_tiles(
+                        window, board[indexes.y][indexes.x], indexes
+                    )
+                    pygame.display.update()
+                    pygame.time.wait(2000)
+                    if board[indexes.y][indexes.x] == board[first_tile.y][first_tile.x]:
+                        board[indexes.y][indexes.x].revealed = True
+                        board[first_tile.y][first_tile.x].revealed = True
+                    Drawable.draw_board(window, board)
+                    first_tile = None
+
+            mouse_clicked = False
+            pygame.display.update()
+            clock.tick(settings.FPS)
 
 
 if __name__ == "__main__":
