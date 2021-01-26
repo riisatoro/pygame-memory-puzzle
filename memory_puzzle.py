@@ -29,14 +29,16 @@ class Core:
             for color in settings.ALL_COLORS
         ]
         shuffle(tiles)
-        tiles_required = (settings.BOARD_WIDTH * settings.BOARD_HEIGHT) // 2
+        tiles_required = (settings.TILES_ON_WIDTH * settings.TILES_ON_HEIGHT) // 2
+        tiles_required += (settings.TILES_ON_WIDTH * settings.TILES_ON_HEIGHT) % 2
+        
         tiles = tiles[:tiles_required] * 2
         shuffle(tiles)
-
+        #import ipdb; ipdb.set_trace()
         board = []
-        for y in range(settings.BOARD_HEIGHT):
+        for y in range(settings.TILES_ON_HEIGHT):
             row = []
-            for x in range(settings.BOARD_WIDTH):
+            for x in range(settings.TILES_ON_WIDTH):
                 row.append(tiles.pop())
             board.append(row)
         return board
@@ -55,8 +57,8 @@ class Core:
 class Drawable:
     @staticmethod
     def draw_board(surf, board):
-        for x_axes in range(settings.BOARD_WIDTH):
-            for y_axes in range(settings.BOARD_HEIGHT):
+        for x_axes in range(settings.TILES_ON_WIDTH):
+            for y_axes in range(settings.TILES_ON_HEIGHT):
                 left, top = Core.get_title_coords_on_display(x_axes, y_axes)
                 if board[y_axes][x_axes].revealed:
                     shape, color = (
@@ -141,6 +143,13 @@ class Drawable:
             (left, top, settings.BOX_SIZE, settings.BOX_SIZE),
         )
 
+    @staticmethod
+    def board_revealed(board):
+        for row in board:
+            for tile in row:
+                if not tile.revealed:
+                    return False
+        return True
 
 class Animation:
     @staticmethod
@@ -176,21 +185,10 @@ class Main:
         pygame.display.set_caption(settings.TITLE)
 
         window = pygame.display.set_mode(settings.RESOLUTION)
-        window.fill(settings.BG_COLOR)
+        window.fill(settings.BOARD_COLOR)
 
         clock = pygame.time.Clock()
 
-        # draw board bg to separate tiles from background
-        pygame.draw.rect(
-            window,
-            settings.BOARD_COLOR,
-            (
-                settings.X_MARGIN - 20,
-                settings.Y_MARGIN - 20,
-                settings.BOARD_WIDTH * (settings.BOX_SIZE + settings.GAP_SIZE) + 30,
-                settings.BOARD_HEIGHT * (settings.BOX_SIZE + settings.GAP_SIZE) + 30,
-            ),
-        )
 
         board = Core.create_new_board()
         Drawable.draw_board(window, board)
@@ -211,13 +209,15 @@ class Main:
                 elif event.type == MOUSEBUTTONUP:
                     mouse_x, mouse_y = event.pos
                     mouse_clicked = True
+            if Core.board_revealed(board):
+                pass
 
             if mouse_clicked:
                 indexes = Indexes(
-                    mouse_x // (settings.BOX_SIZE + settings.GAP_SIZE) - 1,
-                    mouse_y // (settings.BOX_SIZE + settings.GAP_SIZE) - 1,
+                    (mouse_x - settings.GAP_SIZE) // (settings.BOX_SIZE + settings.GAP_SIZE),
+                    (mouse_y - settings.GAP_SIZE) // (settings.BOX_SIZE + settings.GAP_SIZE),
                 )
-                if indexes.x not in range(settings.BOARD_WIDTH) or indexes.y not in range(settings.BOARD_HEIGHT):
+                if indexes.x not in range(settings.TILES_ON_WIDTH) or indexes.y not in range(settings.TILES_ON_HEIGHT):
                     mouse_clicked = False
                     continue
 
